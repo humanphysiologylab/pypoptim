@@ -1,10 +1,18 @@
 import copy
 from typing import final
 
+import numpy as np
+import pandas as pd
+
 
 class Solution:
 
     def __init__(self, x, **kwargs_data):
+
+        x = np.asfarray(x)
+        if x.ndim != 1 or x.shape[0] == 0:
+            raise ValueError
+
         self._x = x
         self._y = None
         self._data = copy.deepcopy(kwargs_data)

@@ -228,8 +228,8 @@ class GA:
             if not self._is_solution_inside_bounds(sol):
                 logger.info(f'  {i} outside bounds')
                 continue
-            logger.info(f'  {i} kept')
 
+            logger.info(f'  {i} kept')
             population_filtered.append(sol)
 
         logger.info('filter_population: END')
