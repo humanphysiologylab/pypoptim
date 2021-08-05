@@ -48,8 +48,18 @@ class GA:
         self._bounds = bounds
         self._n_genes = len(bounds)
 
+        if mask_log10_scale is None:
+            self._mask_log10_scale = np.full(self._n_genes, False)
+        else:
+            mask_log10_scale = np.asarray(mask_log10_scale)
+            if len(mask_log10_scale) != self._n_genes:
+                raise ValueError
+            if np.any(self._bounds[mask_log10_scale.astype(bool), 0] <= 0):
+                raise ValueError
+            self._mask_log10_scale = mask_log10_scale
+
         if gamma_default is None:
-            self._gamma_default = 1
+            self._gamma_default = 1.0
         else:
             gamma_default = float(gamma_default)
             if gamma_default <= 0:
@@ -64,17 +74,9 @@ class GA:
                 raise ValueError
             if np.any(gammas <= 0):
                 raise ValueError
+            mask_nan = np.isnan(gammas)
+            gammas[mask_nan] = self._gamma_default
             self._gammas = gammas
-
-        if mask_log10_scale is None:
-            self._mask_log10_scale = np.full(self._n_genes, False)
-        else:
-            mask_log10_scale = np.asarray(mask_log10_scale)
-            if len(mask_log10_scale) != self._n_genes:
-                raise ValueError
-            if np.any(self._bounds[mask_log10_scale.astype(bool), 0] <= 0):
-                raise ValueError
-            self._mask_log10_scale = mask_log10_scale
 
         _, self._bounds_transformed = transform_genes_bounds(
             self._bounds[:, 0], self._bounds, self._gammas, self._mask_log10_scale
@@ -175,6 +177,40 @@ class GA:
     def generate_population(self, n_solutions: int) -> list:
         return [self.generate_solution() for _ in range(n_solutions)]
 
+    def _transform_population(self, population):
+        return [self._transform_solution(sol) for sol in population]
+
+    def _transform_population_back(self, population):
+        return [self._transform_solution_back(sol) for sol in population]
+
+    def mutate_population(self, population):
+        if not isinstance(population, (list, int)):
+            raise TypeError
+        population_new = self._transform_population(population)
+        population_new = self._mutate_population_transformed(population_new)
+        population_new = self._transform_population_back(population_new)
+        return population_new
+
+    def _mutate_population_transformed(self, population):
+
+        new_population = cauchy_mutation_population(
+            population,
+            bounds=self._bounds_transformed,
+            gamma=self._gamma_default,
+            mutation_rate=self._mutation_rate,
+            rng=self._rng,
+        )
+        return new_population
+
+    def mutate_solution(self, sol):
+        if not isinstance(sol, self._SolutionSubclass):
+            raise TypeError
+        population = [sol]
+        population_mutated = self.mutate_population(population)
+        assert len(population_mutated) == 1
+        sol_mutated = population_mutated[0]
+        return sol_mutated
+
     def _transmit_solution_data(self, sol_parent: Solution, sol_child: Solution):
         for key in self._keys_data_transmit:
             sol_child[key] = copy.deepcopy(sol_parent[key])
@@ -202,9 +238,9 @@ class GA:
         if size < 0:
             raise ValueError
 
-        new_population = []
+        population_new = []
 
-        while len(new_population) < size:
+        while len(population_new) < size:
 
             parent1, parent2 = population[0], population[0]
             while parent1 is parent2:
@@ -223,27 +259,19 @@ class GA:
                 for genes in offspring_genes:
                     child = self._SolutionSubclass(genes)
                     self._transmit_solution_data(parent_data_transmitter, child)
-                    new_population.append(child)
+                    population_new.append(child)
             else:  # no crossover
                 child1 = copy.deepcopy(parent1_transformed)
                 child2 = copy.deepcopy(parent2_transformed)
-                new_population += [child1, child2]
+                population_new += [child1, child2]
 
-        new_population = new_population[
-            :size
-        ]  # sbx_crossover creates pairs so this is for odd size of the population
+        # sbx_crossover creates pairs so this is for odd size of the population:
+        population_new = population_new[:size]
 
-        new_population = cauchy_mutation_population(
-            new_population,
-            bounds=self._bounds_transformed,
-            gamma=self._gamma_default,
-            mutation_rate=self._mutation_rate,
-            rng=self._rng,
-        )
+        population_new = self._mutate_population_transformed(population_new)
+        population_new = self._transform_population_back(population_new)
 
-        new_population = [self._transform_solution_back(sol) for sol in new_population]
-
-        return new_population
+        return population_new
 
     @staticmethod
     def get_elites(population, size=1) -> list:

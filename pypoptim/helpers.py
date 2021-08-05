@@ -72,35 +72,6 @@ def calculate_mean_abs_noise(array, n=31):
 
 
 @njit
-def calculate_gammas_from_bounds(
-    upper_bound_global, bounds, mask_log10_scale, scale_dimensions=True
-):
-    if upper_bound_global <= 0:
-        raise ValueError("The `upper_global_bound` must be positive")
-    if bounds.ndim != 2 or bounds.shape[0] == 0 or bounds.shape[1] != 2:
-        raise ValueError
-    if np.any(bounds[:, 0] >= bounds[:, 1]):
-        raise ValueError("lb >= ub")
-    if len(bounds) != len(mask_log10_scale):
-        raise ValueError(
-            "The size of bounds and the mask of the multiplier must be the same"
-        )
-    n = len(bounds)
-    gammas = np.empty(n)
-
-    for i, ((lb, ub), is_log10) in enumerate(zip(bounds, mask_log10_scale)):
-        gammas[i] = np.log10(ub / lb) if is_log10 else (ub - lb)
-
-    scaler_dimensional = np.sqrt(n) if scale_dimensions else 1
-    scaler_composite = upper_bound_global * scaler_dimensional
-    gammas /= scaler_composite
-
-    assert np.all(gammas > 0)
-
-    return gammas
-
-
-@njit
 def transform_genes_bounds(
     genes, bounds, gammas, mask_log10_scale, scale_dimensions=True
 ):
@@ -110,23 +81,22 @@ def transform_genes_bounds(
     genes_transformed = np.zeros_like(genes)
     bounds_transformed = np.zeros_like(bounds)
 
-    scaler_dimensional = 1 / np.sqrt(len(genes)) if scale_dimensions else 1
+    scaler_dimensional = np.sqrt(len(genes)) if scale_dimensions else 1
+
     for i, (gene, (lb, ub), is_log10, gamma) in enumerate(
         zip(genes, bounds, mask_log10_scale, gammas)
     ):
 
-        if is_log10:  # log10 scale
-            bounds_transformed[i, 1] = (
-                np.log10(ub / lb) * 1 / (gamma / scaler_dimensional)
-            )
+        bounds_transformed[i, 1] = 1 / gamma / scaler_dimensional
+
+        genes_transformed[i] = gene
+        lb_temp = lb
+        ub_temp = ub
+
+        if is_log10:
             genes_transformed[i] = np.log10(gene)
-            lb_temp = np.log10(lb)
-            ub_temp = np.log10(ub)
-        else:  # linear scale
-            genes_transformed[i] = gene
-            bounds_transformed[i, 1] = (ub - lb) * 1 / (gamma / scaler_dimensional)
-            lb_temp = lb
-            ub_temp = ub
+            lb_temp = np.log10(lb_temp)
+            ub_temp = np.log10(ub_temp)
 
         genes_transformed[i] = (
             (genes_transformed[i] - lb_temp)

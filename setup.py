@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="pypoptim",
-    version="0.10",
+    version="0.11",
     packages=["pypoptim"],
     url="https://github.com/humanphysiologylab/pypoptim",
     author="Andrey Pikunov",

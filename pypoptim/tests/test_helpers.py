@@ -48,11 +48,11 @@ def test_transform_genes():
         genes, bounds, gammas, mask_multipliers
     )
 
-    assert np.allclose(genes_transformed, np.array([0.5, 0.5, 0.5, 1]))
+    assert np.allclose(genes_transformed, np.array([0.25, 0.25, 0.16666667, 0.5]))
 
-    assert np.allclose(
-        bounds_transformed, np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 0.75], [0.0, 2.0]])
-    )
+    assert np.all(bounds_transformed[:, 0] == 0)
+
+    assert np.allclose(bounds_transformed[:, 1], np.array([0.5, 0.5, 0.25, 1.0]))
 
     genes_back = transform_genes_bounds_back(
         genes_transformed, bounds_transformed, bounds, mask_multipliers

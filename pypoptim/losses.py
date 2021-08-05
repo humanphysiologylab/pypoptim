@@ -1,8 +1,5 @@
-from sklearn.metrics import mean_squared_error as MSE
-from sklearn.metrics import mean_squared_error as MSE
-
-
 import numpy as np
+from sklearn.metrics import mean_squared_error as MSE
 
 
 def RMSE(x, y, *, sample_weight=None, multioutput="uniform_average"):
