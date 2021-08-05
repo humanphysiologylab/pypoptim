@@ -4,7 +4,6 @@ import pytest
 from ..helpers import (
     argmax,
     argmin,
-    calculate_autoscaling,
     calculate_reflection,
     random_value_from_bounds,
     transform_genes_bounds,
@@ -97,3 +96,8 @@ def test_argmin(test_input, expected_output):
 )
 def test_argmax(test_input, expected_output):
     assert argmax(test_input) == expected_output
+
+
+@pytest.mark.xfail
+def test_calculate_gammas_from_bounds():
+    assert 0

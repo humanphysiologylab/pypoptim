@@ -72,28 +72,62 @@ def calculate_mean_abs_noise(array, n=31):
 
 
 @njit
-def transform_genes_bounds(genes, bounds, gammas, mask_multipliers):
-    assert len(genes) == len(bounds) == len(gammas) == len(mask_multipliers)
+def calculate_gammas_from_bounds(
+    upper_bound_global, bounds, mask_log10_scale, scale_dimensions=True
+):
+    if upper_bound_global <= 0:
+        raise ValueError("The `upper_global_bound` must be positive")
+    if bounds.ndim != 2 or bounds.shape[0] == 0 or bounds.shape[1] != 2:
+        raise ValueError
+    if np.any(bounds[:, 0] >= bounds[:, 1]):
+        raise ValueError("lb >= ub")
+    if len(bounds) != len(mask_log10_scale):
+        raise ValueError(
+            "The size of bounds and the mask of the multiplier must be the same"
+        )
+    n = len(bounds)
+    gammas = np.empty(n)
+
+    for i, ((lb, ub), is_log10) in enumerate(zip(bounds, mask_log10_scale)):
+        gammas[i] = np.log10(ub / lb) if is_log10 else (ub - lb)
+
+    scaler_dimensional = np.sqrt(n) if scale_dimensions else 1
+    scaler_composite = upper_bound_global * scaler_dimensional
+    gammas /= scaler_composite
+
+    assert np.all(gammas > 0)
+
+    return gammas
+
+
+@njit
+def transform_genes_bounds(
+    genes, bounds, gammas, mask_log10_scale, scale_dimensions=True
+):
+    if not (len(genes) == len(bounds) == len(gammas) == len(mask_log10_scale)):
+        raise ValueError("Invalid arrays' lengths")
 
     genes_transformed = np.zeros_like(genes)
     bounds_transformed = np.zeros_like(bounds)
 
-    scaler_dimensional = 1 / np.sqrt(len(genes))
-    for i in range(len(genes)):
-        lb, ub = bounds[i]
-        gene = genes[i]
-        if mask_multipliers[i]:  # log10 scale
+    scaler_dimensional = 1 / np.sqrt(len(genes)) if scale_dimensions else 1
+    for i, (gene, (lb, ub), is_log10, gamma) in enumerate(
+        zip(genes, bounds, mask_log10_scale, gammas)
+    ):
+
+        if is_log10:  # log10 scale
             bounds_transformed[i, 1] = (
-                np.log10(ub / lb) * 1 / (gammas[i] / scaler_dimensional)
+                np.log10(ub / lb) * 1 / (gamma / scaler_dimensional)
             )
             genes_transformed[i] = np.log10(gene)
             lb_temp = np.log10(lb)
             ub_temp = np.log10(ub)
         else:  # linear scale
             genes_transformed[i] = gene
-            bounds_transformed[i, 1] = (ub - lb) * 1 / (gammas[i] / scaler_dimensional)
+            bounds_transformed[i, 1] = (ub - lb) * 1 / (gamma / scaler_dimensional)
             lb_temp = lb
             ub_temp = ub
+
         genes_transformed[i] = (
             (genes_transformed[i] - lb_temp)
             / (ub_temp - lb_temp)
@@ -105,17 +139,17 @@ def transform_genes_bounds(genes, bounds, gammas, mask_multipliers):
 
 @njit
 def transform_genes_bounds_back(
-    genes_transformed, bounds_transformed, bounds_back, mask_multipliers
+    genes_transformed, bounds_transformed, bounds_back, mask_log10_scale
 ):
-    assert len(genes_transformed) == len(bounds_transformed) == len(mask_multipliers)
+    if not (len(genes_transformed) == len(bounds_transformed) == len(mask_log10_scale)):
+        raise ValueError("Invalid arrays' lengths")
 
     genes_back = np.zeros_like(genes_transformed)
 
-    for i in range(len(genes_transformed)):  # log10 scale
-        lb_back, ub_back = bounds_back[i]
-        lb_tran, ub_tran = bounds_transformed[i]
-        gene = genes_transformed[i]
-        if mask_multipliers[i]:
+    for i, (gene, (lb_back, ub_back), (lb_tran, ub_tran), is_log10) in enumerate(
+        zip(genes_transformed, bounds_back, bounds_transformed, mask_log10_scale)
+    ):  # log10 scale
+        if is_log10:
             genes_back[i] = np.log10(lb_back) + (gene - lb_tran) / (
                 ub_tran - lb_tran
             ) * (np.log10(ub_back) - np.log10(lb_back))
