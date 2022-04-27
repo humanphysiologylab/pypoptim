@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="pypoptim",
     version="0.11",
-    packages=["pypoptim"],
+    packages=find_packages(),
     url="https://github.com/humanphysiologylab/pypoptim",
     author="Andrey Pikunov",
     author_email="pikunov@phystech.edu",
-    install_requires=["numpy", "pandas", "scikit-learn", "numba", "pytest"],
+    install_requires=["numpy", "pandas", "scikit-learn", "pytest", "numba"],
 )
