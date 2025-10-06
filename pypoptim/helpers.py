@@ -37,7 +37,7 @@ def batches_from_list(l, n_batches=1):
 
 
 def is_values_inside_bounds(values, bounds):
-    values, bounds = map(np.asfarray, [values, bounds])
+    values, bounds = map(lambda x: np.asarray(x, dtype=float), [values, bounds])
     return np.all((bounds[:, 0] < values) & (values < bounds[:, 1]))
 
 
