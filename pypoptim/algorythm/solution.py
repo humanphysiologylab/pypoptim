@@ -7,7 +7,7 @@ import numpy as np
 class Solution:
     def __init__(self, x, **kwargs_data):
 
-        x = np.asfarray(x)
+        x = np.asarray(x, dtype=float)
         if x.ndim != 1 or x.shape[0] == 0:
             raise ValueError
 
@@ -70,7 +70,7 @@ class Solution:
 
     @x.setter
     def x(self, x_new):
-        x_new = np.asfarray(x_new)
+        x_new = np.asarray(x_new, dtype=float)
         if x_new.ndim != 1 or x_new.shape[0] == 0:
             raise ValueError
         self._x = x_new

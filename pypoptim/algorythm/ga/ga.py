@@ -40,7 +40,7 @@ class GA:
         else:
             raise TypeError
 
-        bounds = np.asfarray(bounds)
+        bounds = np.asarray(bounds, dtype=float)
         if bounds.ndim != 2 or bounds.shape[0] == 0 or bounds.shape[1] != 2:
             raise ValueError
         if np.any(bounds[:, 0] >= bounds[:, 1]):
@@ -69,7 +69,7 @@ class GA:
         if gammas is None:
             self._gammas = np.full(self._n_genes, self._gamma_default)
         else:
-            gammas = np.asfarray(gammas)
+            gammas = np.asarray(gammas, dtype=float)
             if len(gammas) != self._n_genes:
                 raise ValueError
             if np.any(gammas <= 0):

@@ -1,10 +1,11 @@
 import numpy as np
-from sklearn.metrics import mean_squared_error as MSE
+# from sklearn.metrics import mean_squared_error as MSE
+from sklearn.metrics import root_mean_squared_error as RMSE_SKLEARN
 
 
 def RMSE(x, y, *, sample_weight=None, multioutput="uniform_average"):
-    return MSE(
-        x, y, squared=False, sample_weight=sample_weight, multioutput=multioutput
+    return RMSE_SKLEARN(
+        x, y, sample_weight=sample_weight, multioutput=multioutput
     )
 
 

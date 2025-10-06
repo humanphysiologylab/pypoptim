@@ -60,9 +60,9 @@ def sbx_crossover(parent1, parent2, bounds, cross_rate=0.9, rng=None):
     # to make all if conditions containing rand to be True
 
     return _sbx_crossover(
-        parent1=np.asfarray(parent1),
-        parent2=np.asfarray(parent2),
-        bounds=np.asfarray(bounds),
+        parent1=np.asarray(parent1, dtype=float),
+        parent2=np.asarray(parent2, dtype=float),
+        bounds=np.asarray(bounds, dtype=float),
         cross_rate=cross_rate,
         random_sequence=random_sequence,
     )
